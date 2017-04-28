@@ -117,7 +117,7 @@ namespace ServiceStack
         public static ConstructorInfo GetEmptyConstructor(this Type type)
         {
 #if (NETFX_CORE || PCL || NETSTANDARD1_1)
-            return type.GetTypeInfo().DeclaredConstructors.FirstOrDefault(c => c.GetParameters().Count() == 0);
+            return type.GetTypeInfo().DeclaredConstructors.FirstOrDefault(c => c.GetParameters().Length == 0);
 #else
             return type.GetConstructor(Type.EmptyTypes);
 #endif
@@ -795,7 +795,19 @@ namespace ServiceStack
         public static MethodInfo GetMethodInfo(this Type type, string methodName, Type[] types = null)
         {
 #if (NETFX_CORE || PCL || NETSTANDARD1_1)
-            return type.GetRuntimeMethods().FirstOrDefault(p => p.Name.Equals(methodName));
+            if (types == null) 
+                return type.GetRuntimeMethods().FirstOrDefault(p => p.Name.Equals(methodName));
+
+            foreach(var mi in type.GetRuntimeMethods().Where(p => p.Name.Equals(methodName)))
+            {
+                var methodParams = mi.GetParameters().Select(p => p.ParameterType);
+                if (methodParams.SequenceEqual(types))
+                {
+                    return mi;
+                }
+            }
+
+            return null;
 #else
             return types == null
                 ? type.GetMethod(methodName)

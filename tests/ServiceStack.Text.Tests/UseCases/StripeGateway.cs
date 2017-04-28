@@ -695,9 +695,11 @@ namespace ServiceStack.Stripe
 
         public T Send<T>(IReturn<T> request, string method, bool sendRequestBody = true, string idempotencyKey = null)
         {
+            string relativeUrl = null;
+
             using (new ConfigScope())
             {
-                var relativeUrl = request.ToUrl(method);
+                relativeUrl = request.ToUrl(method);
                 var body = sendRequestBody ? QueryStringSerializer.SerializeToString(request) : null;
 
                 var json = Send(relativeUrl, method, body, idempotencyKey);
@@ -709,8 +711,8 @@ namespace ServiceStack.Stripe
 
         public async Task<T> SendAsync<T>(IReturn<T> request, string method, bool sendRequestBody = true, string idempotencyKey = null)
         {
-            string relativeUrl;
-            string body;
+            string body = null;
+            string relativeUrl = null;
 
             using (new ConfigScope())
             {

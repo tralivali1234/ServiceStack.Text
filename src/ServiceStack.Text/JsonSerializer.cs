@@ -29,7 +29,7 @@ namespace ServiceStack.Text
             JsConfig.InitStatics();
         }
 
-        public static UTF8Encoding UTF8Encoding = new UTF8Encoding(false); //Don't emit UTF8 BOM by default
+        public static Encoding UTF8Encoding = PclExport.Instance.GetUTF8Encoding(false);
 
         public static T DeserializeFromString<T>(string value)
         {
@@ -147,7 +147,7 @@ namespace ServiceStack.Text
             }
             else
             {
-                var writer = new StreamWriter(stream, UTF8Encoding);
+                var writer = new DirectStreamWriter(stream, UTF8Encoding);
                 JsonWriter<T>.WriteRootObject(writer, value);
                 writer.Flush();
             }
@@ -155,7 +155,7 @@ namespace ServiceStack.Text
 
         public static void SerializeToStream(object value, Type type, Stream stream)
         {
-            var writer = new StreamWriter(stream, UTF8Encoding);
+            var writer = new DirectStreamWriter(stream, UTF8Encoding);
             JsonWriter.GetWriteFn(type)(writer, value);
             writer.Flush();
         }

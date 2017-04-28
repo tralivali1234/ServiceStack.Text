@@ -15,7 +15,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using ServiceStack.Text.Json;
 
 namespace ServiceStack.Text.Common
 {
@@ -76,7 +75,7 @@ namespace ServiceStack.Text.Common
         {
             if (strType == null || strType.Length <= 1) return null;
 
-            var hasWhitespace = JsonUtils.WhiteSpaceChars.Contains(strType[1]);
+            var hasWhitespace = Json.JsonUtils.WhiteSpaceChars.Contains(strType[1]);
             if (hasWhitespace)
             {
                 var pos = strType.IndexOf('"');
@@ -92,6 +91,8 @@ namespace ServiceStack.Text.Common
                 var typeName = Serializer.UnescapeSafeString(Serializer.EatValue(strType, ref propIndex));
 
                 var type = JsConfig.TypeFinder(typeName);
+
+                JsWriter.AssertAllowedRuntimeType(type);
 
                 if (type == null)
                 {
@@ -237,7 +238,7 @@ namespace ServiceStack.Text.Common
 
         internal static object ParsePrimitive(string value, char firstChar)
         {
-            if (typeof(TSerializer) == typeof(JsonTypeSerializer))
+            if (typeof(TSerializer) == typeof(Json.JsonTypeSerializer))
             {
                 return firstChar == JsWriter.QuoteChar
                     ? ParseQuotedPrimitive(value)
@@ -257,7 +258,7 @@ namespace ServiceStack.Text.Common
         {
             if (strType == null || strType.Length <= 1) return null;
 
-            var hasWhitespace = JsonUtils.WhiteSpaceChars.Contains(strType[1]);
+            var hasWhitespace = Json.JsonUtils.WhiteSpaceChars.Contains(strType[1]);
             if (hasWhitespace)
             {
                 var pos = strType.IndexOf('"');
@@ -286,9 +287,36 @@ namespace ServiceStack.Text.Common
             return new TypeAccessor
             {
                 PropertyType = propertyInfo.PropertyType,
-                GetProperty = serializer.GetParseFn(propertyInfo.PropertyType),
+                GetProperty = GetPropertyMethod(serializer, propertyInfo),
                 SetProperty = GetSetPropertyMethod(typeConfig, propertyInfo),
             };
+        }
+
+        internal static ParseStringDelegate GetPropertyMethod(ITypeSerializer serializer, PropertyInfo propertyInfo)
+        {
+            var getPropertyFn = serializer.GetParseFn(propertyInfo.PropertyType);
+            if (propertyInfo.PropertyType == typeof(object) || 
+                propertyInfo.PropertyType.HasInterface(typeof(IEnumerable<object>)))
+            {
+                var declaringTypeNamespace = propertyInfo.DeclaringType?.Namespace;
+                if (declaringTypeNamespace == null || !JsConfig.AllowRuntimeTypeInTypesWithNamespaces.Contains(declaringTypeNamespace))
+                {
+                    return value =>
+                    {
+                        var hold = JsState.IsRuntimeType;
+                        try
+                        {
+                            JsState.IsRuntimeType = true;
+                            return getPropertyFn(value);
+                        }
+                        finally
+                        {
+                            JsState.IsRuntimeType = hold;
+                        }
+                    };
+                }
+            }
+            return getPropertyFn;
         }
 
         private static SetPropertyDelegate GetSetPropertyMethod(TypeConfig typeConfig, PropertyInfo propertyInfo)

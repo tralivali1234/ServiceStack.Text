@@ -1,4 +1,4 @@
-﻿//Copyright (c) Service Stack LLC. All Rights Reserved.
+﻿//Copyright (c) ServiceStack, Inc. All Rights Reserved.
 //License: https://raw.github.com/ServiceStack/ServiceStack/master/license.txt
 
 using System;
@@ -14,7 +14,7 @@ namespace ServiceStack
     {
         public static string UserAgent = "ServiceStack.Text";
 
-        public static Encoding UseEncoding { get; set; } = new UTF8Encoding(false);
+        public static Encoding UseEncoding { get; set; } = PclExport.Instance.GetUTF8Encoding(false);
 
         [ThreadStatic]
         public static IHttpResultsFilter ResultsFilter;

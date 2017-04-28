@@ -16,10 +16,10 @@ namespace ServiceStack.Text
         /// <summary>
         /// Get JSON string value converted to T
         /// </summary>
-        public static T Get<T>(this Dictionary<string, string> map, string key)
+        public static T Get<T>(this Dictionary<string, string> map, string key, T defaultValue = default(T))
         {
             string strVal;
-            return map.TryGetValue(key, out strVal) ? JsonSerializer.DeserializeFromString<T>(strVal) : default(T);
+            return map.TryGetValue(key, out strVal) ? JsonSerializer.DeserializeFromString<T>(strVal) : defaultValue;
         }
 
         public static T[] GetArray<T>(this Dictionary<string, string> map, string key)
@@ -179,6 +179,11 @@ namespace ServiceStack.Text
 
         public T ConvertTo<T>()
         {
+            return (T)this.ConvertTo(typeof(T));
+        }
+
+        public object ConvertTo(Type type)
+        {
             var map = new Dictionary<string, object>();
 
             foreach (var entry in this)
@@ -186,7 +191,7 @@ namespace ServiceStack.Text
                 map[entry.Key] = entry.Value;
             }
 
-            return (T)map.FromObjectDictionary(typeof(T));
+            return map.FromObjectDictionary(type);
         }
     }
 

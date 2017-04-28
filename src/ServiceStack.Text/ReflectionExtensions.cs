@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2012 Service Stack LLC. All Rights Reserved.
+// Copyright 2012 ServiceStack, Inc. All Rights Reserved.
 //
 // Licensed under the same terms of ServiceStack.
 //
@@ -78,7 +78,10 @@ namespace ServiceStack
 
         public static Type[] GetGenericArguments(this Type type)
         {
-            return type.GetTypeInfo().GenericTypeArguments;
+            //http://stackoverflow.com/a/39140220/85785
+            return type.GetTypeInfo().IsGenericTypeDefinition
+                ? type.GetTypeInfo().GenericTypeParameters
+                : type.GetTypeInfo().GenericTypeArguments;
         }
 
         internal static TypeInfo GetTypeInfo(this Type type)
@@ -88,19 +91,11 @@ namespace ServiceStack
 #endif
 
 #if NETSTANDARD1_1
-        private static readonly Func<Type, object> GetUninitializedObjectDelegate;
-
-        static ReflectionExtensions()
-        {
-            var formatterServices = typeof(string).GetTypeInfo().Assembly
-               .GetType("System.Runtime.Serialization.FormatterServices");
-            if (formatterServices != null)
-            {
-                var method = formatterServices.GetMethod("GetUninitializedObject");
-                if (method != null)
-                    GetUninitializedObjectDelegate = (Func<Type, object>)method.CreateDelegate(typeof(Func<Type, object>));
-            }
-        }
+        private static readonly Func<Type, object> GetUninitializedObjectDelegate = 
+            (Func<Type, object>) typeof(string).GetTypeInfo().Assembly
+               .GetType("System.Runtime.Serialization.FormatterServices")
+               ?.GetMethod("GetUninitializedObject")
+               ?.CreateDelegate(typeof(Func<Type, object>));
 #endif
 
         public static TypeCode GetTypeCode(this Type type)

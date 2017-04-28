@@ -59,7 +59,7 @@ namespace ServiceStack.Text.Common
             if (string.IsNullOrEmpty(value))
                 return null;
 
-            value = value.TrimEnd();
+            value = value.Trim();
 
             const int startQuotePos = 1;
             const int endQuotePos = 2;
@@ -69,7 +69,8 @@ namespace ServiceStack.Text.Common
 
             var pos = 0;
             Serializer.EatWhitespace(ret, ref pos);
-            return ret.Substring(pos, ret.Length - pos);
+            var val = ret.Substring(pos, ret.Length - pos);
+            return val;
         }
 
         public static List<string> ParseStringList(string value)
@@ -102,13 +103,37 @@ namespace ServiceStack.Text.Common
             if ((value = StripList(value)) == null) return null;
             if (value == string.Empty) return new List<int>();
 
-            var intParts = value.Split(JsWriter.ItemSeperator);
-            var intValues = new List<int>(intParts.Length);
-            foreach (var intPart in intParts)
+            var to = new List<int>();
+            var valueLength = value.Length;
+
+            var i = 0;
+            while (i < valueLength)
             {
-                intValues.Add(int.Parse(intPart));
+                var elementValue = Serializer.EatValue(value, ref i);
+                to.Add(int.Parse(elementValue));
+                Serializer.EatItemSeperatorOrMapEndChar(value, ref i);
             }
-            return intValues;
+
+            return to;
+        }
+
+        public static List<byte> ParseByteList(string value)
+        {
+            if ((value = StripList(value)) == null) return null;
+            if (value == string.Empty) return new List<byte>();
+
+            var to = new List<byte>();
+            var valueLength = value.Length;
+
+            var i = 0;
+            while (i < valueLength)
+            {
+                var elementValue = Serializer.EatValue(value, ref i);
+                to.Add(byte.Parse(elementValue));
+                Serializer.EatItemSeperatorOrMapEndChar(value, ref i);
+            }
+
+            return to;
         }
     }
 
@@ -128,7 +153,8 @@ namespace ServiceStack.Text.Common
                 ? new List<T>()
                 : (ICollection<T>)createListType.CreateInstance();
 
-            if (value == string.Empty) return to;
+            if (value == string.Empty)
+                return isReadOnly ? (ICollection<T>)Activator.CreateInstance(createListType, to) : to;
 
             var tryToParseItemsAsPrimitiveTypes =
                 JsConfig.TryToParsePrimitiveTypeValues && typeof(T) == typeof(object);
@@ -199,23 +225,20 @@ namespace ServiceStack.Text.Common
     public static class DeserializeList<T, TSerializer>
         where TSerializer : ITypeSerializer
     {
-        private readonly static ParseStringDelegate CacheFn;
+        private static readonly ParseStringDelegate CacheFn;
 
         static DeserializeList()
         {
             CacheFn = GetParseFn();
         }
 
-        public static ParseStringDelegate Parse
-        {
-            get { return CacheFn; }
-        }
+        public static ParseStringDelegate Parse => CacheFn;
 
         public static ParseStringDelegate GetParseFn()
         {
             var listInterface = typeof(T).GetTypeWithGenericInterfaceOf(typeof(IList<>));
             if (listInterface == null)
-                throw new ArgumentException(string.Format("Type {0} is not of type IList<>", typeof(T).FullName));
+                throw new ArgumentException($"Type {typeof(T).FullName} is not of type IList<>");
 
             //optimized access for regularly used types
             if (typeof(T) == typeof(List<string>))
@@ -244,23 +267,20 @@ namespace ServiceStack.Text.Common
     internal static class DeserializeEnumerable<T, TSerializer>
         where TSerializer : ITypeSerializer
     {
-        private readonly static ParseStringDelegate CacheFn;
+        private static readonly ParseStringDelegate CacheFn;
 
         static DeserializeEnumerable()
         {
             CacheFn = GetParseFn();
         }
 
-        public static ParseStringDelegate Parse
-        {
-            get { return CacheFn; }
-        }
+        public static ParseStringDelegate Parse => CacheFn;
 
         public static ParseStringDelegate GetParseFn()
         {
             var enumerableInterface = typeof(T).GetTypeWithGenericInterfaceOf(typeof(IEnumerable<>));
             if (enumerableInterface == null)
-                throw new ArgumentException(string.Format("Type {0} is not of type IEnumerable<>", typeof(T).FullName));
+                throw new ArgumentException($"Type {typeof(T).FullName} is not of type IEnumerable<>");
 
             //optimized access for regularly used types
             if (typeof(T) == typeof(IEnumerable<string>))

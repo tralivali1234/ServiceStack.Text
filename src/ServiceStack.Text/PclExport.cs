@@ -264,6 +264,24 @@ namespace ServiceStack
             webReq.Headers[name] = value;
         }
 
+        public virtual void SetUserAgent(HttpWebRequest httpReq, string value)
+        {
+            httpReq.Headers[HttpRequestHeader.UserAgent] = value;
+        }
+
+        public virtual void SetContentLength(HttpWebRequest httpReq, long value)
+        {
+            httpReq.Headers[HttpRequestHeader.ContentLength] = value.ToString();
+        }
+
+        public virtual void SetAllowAutoRedirect(HttpWebRequest httpReq, bool value)
+        {
+        }
+
+        public virtual void SetKeepAlive(HttpWebRequest httpReq, bool value)
+        {
+        }
+
         public virtual Assembly[] GetAllAssemblies()
         {
             return new Assembly[0];
@@ -297,6 +315,15 @@ namespace ServiceStack
         public virtual byte[] GetAsciiBytes(string str)
         {
             return Encoding.UTF8.GetBytes(str);
+        }
+
+        public virtual Encoding GetUTF8Encoding(bool emitBom=false)
+        {
+#if !PCL
+            return new UTF8Encoding(emitBom);
+#else
+            return Encoding.UTF8;
+#endif
         }
 
         public virtual SetPropertyDelegate GetSetPropertyMethod(PropertyInfo propertyInfo)
@@ -450,6 +477,11 @@ namespace ServiceStack
         public virtual LicenseKey VerifyLicenseKeyText(string licenseKeyText)
         {
             return licenseKeyText.ToLicenseKey();
+        }
+
+        public virtual LicenseKey VerifyLicenseKeyTextFallback(string licenseKeyText)
+        {
+            return licenseKeyText.ToLicenseKeyFallback();
         }
 
         public virtual void BeginThreadAffinity()

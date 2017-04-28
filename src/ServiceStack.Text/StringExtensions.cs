@@ -5,7 +5,7 @@
 // Authors:
 //   Demis Bellot (demis.bellot@gmail.com)
 //
-// Copyright 2012 Service Stack LLC. All Rights Reserved.
+// Copyright 2012 ServiceStack, Inc. All Rights Reserved.
 //
 // Licensed under the same terms of ServiceStack.
 //
@@ -1007,6 +1007,11 @@ namespace ServiceStack
             return text == null ? default(float) : float.Parse(text);
         }
 
+        public static float ToFloatInvariant(this string text)
+        {
+            return text == null ? default(float) : float.Parse(text, CultureInfo.InvariantCulture);
+        }
+
         public static float ToFloat(this string text, float defaultValue)
         {
             float ret;
@@ -1018,6 +1023,11 @@ namespace ServiceStack
             return text == null ? default(double) : double.Parse(text);
         }
 
+        public static double ToDoubleInvariant(this string text)
+        {
+            return text == null ? default(double) : double.Parse(text, CultureInfo.InvariantCulture);
+        }
+
         public static double ToDouble(this string text, double defaultValue)
         {
             double ret;
@@ -1027,6 +1037,11 @@ namespace ServiceStack
         public static decimal ToDecimal(this string text)
         {
             return text == null ? default(decimal) : decimal.Parse(text);
+        }
+
+        public static decimal ToDecimalInvariant(this string text)
+        {
+            return text == null ? default(decimal) : decimal.Parse(text, CultureInfo.InvariantCulture);
         }
 
         public static decimal ToDecimal(this string text, decimal defaultValue)
@@ -1068,6 +1083,56 @@ namespace ServiceStack
             }
 
             return value.Length == pos;
+        }
+
+        public static bool GlobPath(this string filePath, string pattern)
+        {
+            if (string.IsNullOrEmpty(filePath) || string.IsNullOrEmpty(pattern))
+                return false;
+
+            var sanitizedPath = filePath.Replace('\\','/');
+            if (sanitizedPath[0] == '/')
+                sanitizedPath = sanitizedPath.Substring(1);
+            var sanitizedPattern = pattern.Replace('\\', '/');
+            if (sanitizedPattern[0] == '/')
+                sanitizedPattern = sanitizedPattern.Substring(1);
+
+            if (sanitizedPattern.IndexOf('*') == -1 && sanitizedPattern.IndexOf('?') == -1)
+                return sanitizedPath == sanitizedPattern;
+
+            var patternParts = sanitizedPattern.SplitOnLast('/');
+            var parts = sanitizedPath.SplitOnLast('/');
+            if (parts.Length == 1)
+                return parts[0].Glob(pattern);
+
+            var dirPart = parts[0];
+            var filePart = parts[1];
+            if (patternParts.Length == 1)
+                return filePart.Glob(patternParts[0]);
+
+            var dirPattern = patternParts[0];
+            var filePattern = patternParts[1];
+
+            if (dirPattern.IndexOf("**", StringComparison.Ordinal) >= 0)
+            {
+                if (!sanitizedPath.StartsWith(dirPattern.LeftPart("**").TrimEnd('*', '/')))
+                    return false;
+            }
+            else if (dirPattern.IndexOf('*') >= 0 || dirPattern.IndexOf('?') >= 0)
+            {
+                var regex = new Regex(
+                    "^" + Regex.Escape(dirPattern).Replace(@"\*", "[^\\/]*").Replace(@"\?", ".") + "$"
+                );
+                if (!regex.IsMatch(dirPart))
+                    return false;
+            }
+            else
+            {
+                if (dirPart != dirPattern)
+                    return false;
+            }
+
+            return filePart.Glob(filePattern);
         }
 
         public static string TrimPrefixes(this string fromString, params string[] prefixes)

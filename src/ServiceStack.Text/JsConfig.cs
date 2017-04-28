@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 using System.Threading;
 using ServiceStack.Text.Common;
 using ServiceStack.Text.Json;
@@ -122,6 +123,10 @@ namespace ServiceStack.Text
                     case "eu":
                     case "escapeunicode":
                         scope.EscapeUnicode = boolValue;
+                        break;
+                    case "ehc":
+                    case "escapehtmlchars":
+                        scope.EscapeHtmlChars = boolValue;
                         break;
                     case "ipf":
                     case "includepublicfields":
@@ -748,12 +753,31 @@ namespace ServiceStack.Text
             get
             {
                 return (JsConfigScope.Current != null ? JsConfigScope.Current.EscapeUnicode : null)
-                    ?? sEscapeUnicode
-                    ?? false;
+                       ?? sEscapeUnicode
+                       ?? false;
             }
             set
             {
                 if (!sEscapeUnicode.HasValue) sEscapeUnicode = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating if HTML entity chars [&gt; &lt; &amp; = '] should be escaped as "\uXXXX".
+        /// </summary>
+        private static bool? sEscapeHtmlChars;
+        public static bool EscapeHtmlChars
+        {
+            // obeying the use of ThreadStatic, but allowing for setting JsConfig once as is the normal case
+            get
+            {
+                return (JsConfigScope.Current != null ? JsConfigScope.Current.EscapeHtmlChars : null)
+                       ?? sEscapeHtmlChars
+                       ?? false;
+            }
+            set
+            {
+                if (!sEscapeHtmlChars.HasValue) sEscapeHtmlChars = value;
             }
         }
 
@@ -893,6 +917,14 @@ namespace ServiceStack.Text
             get { return ReflectionExtensions.IgnoreAttributesNamed; }
         }
 
+        public static HashSet<string> AllowRuntimeTypeWithAttributesNamed { get; set; }
+
+        public static HashSet<string> AllowRuntimeTypeWithInterfacesNamed { get; set; }
+
+        public static HashSet<string> AllowRuntimeTypeInTypesWithNamespaces { get; set; }
+
+        public static Func<Type, bool> AllowRuntimeType { get; set; }
+
         public static void Reset()
         {
             foreach (var rawSerializeType in HasSerializeFn.ToArray())
@@ -934,6 +966,7 @@ namespace ServiceStack.Text
             sSkipDateTimeConversion = null;
             sAppendUtcOffset = null;
             sEscapeUnicode = null;
+            sEscapeHtmlChars = null;
             sOnDeserializationError = null;
             sIncludePublicFields = null;
             HasSerializeFn = new HashSet<Type>();
@@ -946,6 +979,26 @@ namespace ServiceStack.Text
             sMaxDepth = 50;
             sParsePrimitiveIntegerTypes = null;
             sParsePrimitiveFloatingPointTypes = null;
+            AllowRuntimeType = null;
+            AllowRuntimeTypeWithAttributesNamed = new HashSet<string>
+            {
+                nameof(DataContractAttribute),
+                nameof(RuntimeSerializableAttribute),
+                "SerializableAttribute",
+            };
+            AllowRuntimeTypeWithInterfacesNamed = new HashSet<string>
+            {
+                "IConvertible",
+                "ISerializable",
+                "IRuntimeSerializable",
+                "IMeta",
+                "IReturn`1",
+                "IReturnVoid",
+            };
+            AllowRuntimeTypeInTypesWithNamespaces = new HashSet<string>
+            {
+                "ServiceStack.Messaging",
+            };
             PlatformExtensions.ClearRuntimeAttributes();
             ReflectionExtensions.Reset();
             JsState.Reset();
